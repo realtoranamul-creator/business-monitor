@@ -1,0 +1,65 @@
+name: Daily Video Pipeline Trigger
+
+# Build #376 — Compliant replacement for the deleted Chat Z AI cron job
+# (master prompt Section 1 Rule 2: "NEVER USE CHAT Z AI CRON JOBS").
+#
+# Phase 11 of the master prompt explicitly prefers "independent low-cost
+# heartbeat checks" — this scheduled GitHub Actions workflow on a PUBLIC
+# repo (unlimited minutes) is exactly that: independent of Vercel, free,
+# and reliable.
+#
+# Flow: GitHub Actions (daily 14:00 UTC) → GET /api/cron/video-content
+# with VERCEL_TOKEN Bearer (accepted by the route alongside CRON_SECRET)
+# → Gemini generates script → repository_dispatch → video-assembly.yml
+# in hoque-realty (~3.5 min) → YouTube upload → cross-post to FB/IG/
+# Threads/LinkedIn/X/Pinterest/Blogger/Tumblr.
+#
+# NOTE: 14:00 UTC = 9:00 AM America/Detroit in winter (EST, UTC-5).
+# In summer (EDT, UTC-4) it fires at 10:00 AM local — a harmless 1-hour
+# seasonal shift. GitHub Actions cron does not support DST-aware schedules.
+
+on:
+  schedule:
+    - cron: '0 14 * * *'
+  workflow_dispatch: # Manual test trigger
+
+permissions:
+  contents: read
+
+jobs:
+  trigger-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Trigger daily video pipeline
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          HTTP_CODE=$(curl -sL -X GET \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://hoquerealty.com/api/cron/video-content" \
+            -o /tmp/video-response.json -w "%{http_code}" --max-time 180)
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response:"
+          cat /tmp/video-response.json || echo "(no body)"
+          echo ""
+          if [ "$HTTP_CODE" = "401" ]; then
+            echo "::error::401 Unauthorized — VERCEL_TOKEN secret rejected. Check the GitHub secret matches the Vercel env var."
+            exit 1
+          fi
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::warning::Pipeline returned HTTP $HTTP_CODE (non-fatal — may be quota/resource guard)"
+            exit 1
+          fi
+          if grep -q '"ok":true' /tmp/video-response.json 2>/dev/null || grep -q '"ok": true' /tmp/video-response.json 2>/dev/null; then
+            echo "OK: Video pipeline triggered successfully (ok:true) — script, assembly, YouTube, cross-posts"
+          else
+            echo "WARNING: HTTP 200 but ok:true not found in response — inspect the JSON above"
+          fi
+
+      - name: Report failure to summary
+        if: failure()
+        run: |
+          echo "### Daily video pipeline FAILED" >> $GITHUB_STEP_SUMMARY
+          echo "The trigger to /api/cron/video-content did not succeed." >> $GITHUB_STEP_SUMMARY
+          echo "Check: (1) VERCEL_TOKEN secret valid, (2) site is up, (3) Gemini quota." >> $GITHUB_STEP_SUMMARY
