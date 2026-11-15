@@ -1,0 +1,50 @@
+{
+  "_comment": "Cross-project monitoring configuration. Add new projects here. Secrets (VERCEL_TOKEN, RESEND_API_KEY, GEMINI_API_KEY, OWNER_PRIVATE_ALERT_EMAIL) are stored as GitHub Actions secrets — never in this file.",
+  "projects": [
+    {
+      "name": "Hoque Realty",
+      "business": "Hoque Realty",
+      "domain": "hoquerealty.com",
+      "url": "https://hoquerealty.com",
+      "vercel_project_id": "prj_iuDi4bClZnTOk7QsaJa0XnEyeUgx",
+      "critical_routes": [
+        "https://hoquerealty.com",
+        "https://hoquerealty.com/blog",
+        "https://hoquerealty.com/contact",
+        "https://hoquerealty.com/listings",
+        "https://hoquerealty.com/api/health"
+      ],
+      "uses_supabase": true,
+      "uses_gemini": true,
+      "uses_resend": true,
+      "uses_stripe": false,
+      "gemini_budget_usd": 50.0,
+      "notes": "Real estate website — 5-language, lead generation, AI content"
+    }
+  ],
+  "_projects_not_found": [
+    {"name": "GigTry", "domain": "GigTry.com", "status": "Not found on this Vercel/GitHub account. Add its project config here once deployed."},
+    {"name": "LeadHunting AI", "domain": "leadhunting.app", "status": "Not found on this Vercel/GitHub account. Add its project config here once deployed."},
+    {"name": "IronBedTruck", "domain": "IronBedTruck.com", "status": "Not found on this Vercel/GitHub account. Add its project config here once deployed."}
+  ],
+  "alert_thresholds": {
+    "website_timeout_seconds": 15,
+    "response_time_warning_ms": 3000,
+    "response_time_critical_ms": 10000,
+    "ssl_expiry_warning_days": 30,
+    "ssl_expiry_critical_days": 7,
+    "gemini_budget_warning_pct": 50,
+    "gemini_budget_high_pct": 75,
+    "gemini_budget_critical_pct": 90,
+    "gemini_budget_exhausted_pct": 100,
+    "max_retries": 3,
+    "retry_backoff_base_seconds": 30,
+    "dedup_window_minutes": 60,
+    "recovery_reminder_minutes": 360
+  },
+  "email": {
+    "sender": "alerts@hoquerealty.com",
+    "sender_fallback": "onboarding@resend.dev",
+    "sender_name": "Business Monitor"
+  }
+}
