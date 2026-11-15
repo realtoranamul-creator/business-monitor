@@ -1,0 +1,7 @@
+# Monitor state — persisted via GitHub Actions cache (private, 7-day TTL)
+monitor-state.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/

@@ -2,28 +2,34 @@ name: Infrastructure Monitor
 
 on:
   schedule:
-    # Every 10 minutes (independent of Vercel — runs on GitHub infrastructure)
-    - cron: '*/10 * * * *'
-  workflow_dispatch: # Allow manual trigger for testing
+    # Every 15 minutes — PUBLIC repo = unlimited GitHub Actions minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
 
 permissions:
-  contents: write # Needed to commit state file for dedup
+  contents: read
   actions: read
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Restore monitor state from cache
+        uses: actions/cache@v4
+        with:
+          path: monitor-state.json
+          key: monitor-state
+          restore-keys: |
+            monitor-state
 
       - name: Run monitoring checks
         env:
@@ -33,15 +39,11 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OWNER_PRIVATE_ALERT_EMAIL: ${{ secrets.OWNER_PRIVATE_ALERT_EMAIL }}
           GITHUB_WORKSPACE: ${{ github.workspace }}
-        run: |
-          python monitor.py
+        run: python monitor.py
 
-      - name: Commit state file (for dedup + recovery tracking)
-        run: |
-          if [ -f monitor-state.json ]; then
-            git config --global user.name "Business Monitor Bot"
-            git config --global user.email "actions@github.com"
-            git add monitor-state.json
-            git commit -m "chore: update monitor state [skip ci]" || echo "No state changes"
-            git push || echo "Push failed (non-critical)"
-          fi
+      - name: Save monitor state to cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: monitor-state.json
+          key: monitor-state
